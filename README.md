@@ -15,14 +15,21 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 
 ```text
 skills/
-├── _shared/reopenly.py       # dependency-free API helper (HF needs `datasets`)
-├── reopenly-upload-csv/SKILL.md
-├── reopenly-import-huggingface/SKILL.md
-├── reopenly-train-deploy/SKILL.md
-└── reopenly-inference/SKILL.md
+├── reopenly-upload-csv/
+│   ├── SKILL.md
+│   └── scripts/reopenly.py
+├── reopenly-import-huggingface/
+│   ├── SKILL.md
+│   └── scripts/reopenly.py
+├── reopenly-train-deploy/
+│   ├── SKILL.md
+│   └── scripts/reopenly.py
+└── reopenly-inference/
+    ├── SKILL.md
+    └── scripts/reopenly.py
 ```
 
-The repository uses a visible, tool-neutral `skills/` directory. It does not add OpenCode- or Claude-specific hidden folders. Both tools support the `SKILL.md` format; installation links the skill directories into the tool's normal skills location.
+Each skill includes its own helper script so it remains self-contained when installed. The repository uses a visible, tool-neutral `skills/` directory and does not add agent-specific hidden folders.
 
 ## Prerequisites and credentials
 
@@ -36,45 +43,33 @@ The repository uses a visible, tool-neutral `skills/` directory. It does not add
   Do not commit the key, place it in scripts, pass it as a command-line argument, or print it. Prefer a secret manager or your shell's secure environment configuration.
 - For Hugging Face import only: install the optional loader package with `python3 -m pip install datasets`. Gated/private datasets may also require Hugging Face authentication configured through the Hugging Face tooling.
 
-The shared helper uses only Python's standard library for ReOpenly API calls. To see available command options:
+The API helpers use only Python's standard library. The Hugging Face skill additionally requires the optional `datasets` package. After installing a skill, invoke its helper with Python from that skill's installed directory; for example:
 
 ```sh
-python3 skills/_shared/reopenly.py --help
+python3 /path/to/reopenly-upload-csv/scripts/reopenly.py --help
 ```
 
-## Install for OpenCode
+## Install
 
-OpenCode's global skills directory is `~/.config/opencode/skills/`. Clone this repository, then symlink the skill directories and shared helper into that location:
+Install all four skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```sh
-git clone https://github.com/reopenly/skills.git
-mkdir -p ~/.config/opencode/skills
-REOPENLY_SKILLS="$(cd reopenly-skills && pwd)/skills"
-ln -s "$REOPENLY_SKILLS/_shared" ~/.config/opencode/skills/_shared
-for skill in "$REOPENLY_SKILLS"/reopenly-*; do
-  ln -s "$skill" ~/.config/opencode/skills/"$(basename "$skill")"
-done
+npx skills add reopenly/skills --skill '*' -a claude-code -a opencode
 ```
 
-The links point into the clone, so keep it in place and pull updates there as needed. OpenCode discovers each linked folder's `SKILL.md` and can load the skills by their IDs, e.g. `@reopenly-upload-csv`. The helper path in the skill instructions is relative to the repository root; run it from that root.
-
-## Install for Claude Code
-
-Claude Code's personal skills directory is `~/.claude/skills/`. Symlink the skill folders and shared helper there:
+The CLI prompts for confirmation and installs the skills for Claude Code and OpenCode in the current project. To install globally for your user, add `-g`:
 
 ```sh
-git clone https://github.com/reopenly/skills.git
-mkdir -p ~/.claude/skills
-REOPENLY_SKILLS="$(cd reopenly-skills && pwd)/skills"
-ln -s "$REOPENLY_SKILLS/_shared" ~/.claude/skills/_shared
-for skill in "$REOPENLY_SKILLS"/reopenly-*; do
-  ln -s "$skill" ~/.claude/skills/"$(basename "$skill")"
-done
+npx skills add reopenly/skills --skill '*' -a claude-code -a opencode -g
 ```
 
-The links point into the clone, so keep it in place and pull updates there as needed. Claude Code makes skills available as slash commands, such as `/reopenly-train-deploy`, and may also invoke them automatically based on the request. Execute the helper from the cloned repository root.
+You can install one skill at a time by replacing `'*'` with a skill ID, for example `--skill reopenly-upload-csv`. List available skills before installing with:
 
-To install for just one project instead of globally, use the equivalent project skills directory documented by your agent: `.opencode/skills/` for OpenCode or `.claude/skills/` for Claude Code. This repository itself intentionally does not contain those tool-specific paths.
+```sh
+npx skills add reopenly/skills --list
+```
+
+The CLI supports many coding agents. Use `npx skills add --help` for the supported agent IDs and options. Once installed, ask your agent naturally to perform a task, or invoke the corresponding skill directly (for example, `/reopenly-train-deploy` in Claude Code).
 
 ## Usage examples
 
@@ -89,23 +84,23 @@ Or run the helper directly:
 
 ```sh
 # CSV upload
-python3 skills/_shared/reopenly.py csv \
+python3 skills/reopenly-upload-csv/scripts/reopenly.py csv \
   --owner acme --project helpdesk --file ./support.csv \
   --question-column query --answer-column response --tag support-v1
 
 # Hugging Face dataset upload
-python3 skills/_shared/reopenly.py huggingface \
+python3 skills/reopenly-import-huggingface/scripts/reopenly.py huggingface \
   --owner acme --project helpdesk --dataset org/dataset --split train \
   --question-column question --answer-column answer --tag support-v1 --limit 50
 
 # Fine-tune and deploy (interactive confirmation is enabled by default)
-python3 skills/_shared/reopenly.py train \
+python3 skills/reopenly-train-deploy/scripts/reopenly.py train \
   --owner acme --project helpdesk --base-model CATALOG_MODEL_ID \
   --tag support-v1 --epochs 3 --max-seq-length 2048 \
   --model-name 'Support assistant' --model-slug support-assistant --deploy
 
 # Inference
-python3 skills/_shared/reopenly.py infer \
+python3 skills/reopenly-inference/scripts/reopenly.py infer \
   --owner acme --project helpdesk --model support-assistant \
   --prompt 'How do I return an order?'
 ```
@@ -132,3 +127,4 @@ See each skill's `SKILL.md` for its workflow and safety guidance. CSV and Huggin
 - [OpenAI-compatible inference](https://reopenly.com/docs/api/openai-compatible/)
 - [OpenCode skills](https://opencode.ai/v2/docs/skills/)
 - [Claude Code skills](https://docs.anthropic.com/en/docs/claude-code/skills)
+- [`npx skills` CLI](https://github.com/vercel-labs/skills)

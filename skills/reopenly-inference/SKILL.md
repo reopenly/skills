@@ -7,10 +7,10 @@ compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Calls may incur infere
 # Run inference
 
 1. Confirm the owner/project, model alias (or permitted catalog model), and user prompt. Note that a successful inference may incur a charge.
-2. Run from the repository root:
+2. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
-python3 skills/_shared/reopenly.py infer \
+python3 /path/to/reopenly-inference/scripts/reopenly.py infer \
   --owner OWNER --project PROJECT --model MODEL_SLUG \
   --prompt 'Your question here' --max-tokens 256 --temperature 0.2
 ```

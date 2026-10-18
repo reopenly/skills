@@ -8,10 +8,10 @@ compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Training and inference
 
 1. Confirm owner/project, base catalog model ID, selected dataset tags (no tags means all project chats), epoch count, sequence length, display name and kebab-case alias slug. Never invent a base model ID: ask the user or have them consult `GET /api/v1/base-models`.
 2. Explain training is asynchronous and measured training time is billable. The helper asks for confirmation before creating a job unless `--yes` is supplied. Do not use `--yes` unless the user explicitly requested execution without another confirmation.
-3. Run from repository root:
+3. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
-python3 skills/_shared/reopenly.py train \
+python3 /path/to/reopenly-train-deploy/scripts/reopenly.py train \
   --owner OWNER --project PROJECT --base-model CATALOG_MODEL_ID \
   --tag support --epochs 3 --max-seq-length 2048 \
   --model-name 'Support assistant' --model-slug support-assistant --deploy

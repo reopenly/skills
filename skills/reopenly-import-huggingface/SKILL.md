@@ -8,11 +8,11 @@ compatibility: Requires Python 3.9+, the `datasets` Python package, and REOPENLY
 
 1. Confirm the Hugging Face dataset ID, optional configuration, split, owner/project slugs, question and answer column names, and any desired tags. Do not guess dataset fields or split.
 2. Explain that the script downloads/streams dataset data and creates ReOpenly chat examples individually, using a thread pool of exactly five parallel upload requests. Confirm the size or use a limit for a trial import. For gated datasets, the user must configure Hugging Face authentication separately.
-3. Run the script from this repository's root:
+3. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
 python3 -m pip install datasets
-python3 skills/_shared/reopenly.py huggingface \
+python3 /path/to/reopenly-import-huggingface/scripts/reopenly.py huggingface \
   --owner OWNER --project PROJECT --dataset DATASET_ID --split train \
   --question-column question --answer-column answer --tag support --limit 100
 ```

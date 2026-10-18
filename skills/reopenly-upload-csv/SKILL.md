@@ -10,10 +10,10 @@ compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Uses the ReOpenly cust
 2. Ask which tag(s) to apply. Tags are useful for selecting training data later. Tell the user that each row becomes a chat with a user message and assistant message.
 3. Inspect the CSV header and a few rows if available. Never print or expose `REOPENLY_API_KEY`.
 4. Confirm malformed-row policy (`fail` by default; `skip` only if the user chooses it). The script uploads rows individually; if a request fails partway through, report how far it got and do not blindly rerun, because that may create duplicates.
-5. Run from the repository root (or use an absolute path to the helper):
+5. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
-python3 skills/_shared/reopenly.py csv \
+python3 /path/to/reopenly-upload-csv/scripts/reopenly.py csv \
   --owner OWNER --project PROJECT --file /path/to/data.csv \
   --question-column question --answer-column answer --tag support
 ```
