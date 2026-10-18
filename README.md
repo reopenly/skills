@@ -22,7 +22,7 @@ skills/
 └── reopenly-inference/SKILL.md
 ```
 
-The repository uses a visible, tool-neutral `skills/` directory. It does not add OpenCode- or Claude-specific hidden folders. Both tools support the `SKILL.md` format; installation copies or links the skill directories into the tool's normal skills location.
+The repository uses a visible, tool-neutral `skills/` directory. It does not add OpenCode- or Claude-specific hidden folders. Both tools support the `SKILL.md` format; installation links the skill directories into the tool's normal skills location.
 
 ## Prerequisites and credentials
 
@@ -115,7 +115,7 @@ See each skill's `SKILL.md` for its workflow and safety guidance. CSV and Huggin
 ## API behavior and safety notes
 
 - All project REST writes use `https://reopenly.com/api/v1/projects/{owner}/{project}/...` with a bearer token. Inference uses `https://reopenly.com/api/projects/{owner}/{project}/openai/v1/chat/completions`.
-- Q&A upload creates a chat containing one `user` and one `assistant` message. Supply deliberate tags because training jobs select data by tags; when no tag is supplied, the helper omits tags.
+- Q&A upload creates a chat containing one `user` and one `assistant` message. Hugging Face uploads use a thread pool of five parallel API requests; CSV uploads are sequential. Supply deliberate tags because training jobs select data by tags; when no tag is supplied, the helper omits tags.
 - A training job is asynchronous. The script polls until a model is available or the job fails. Training charges are based on measured training time. The helper asks for confirmation before creating the job, and before deploying an alias. `--yes` bypasses those prompts; only use it when intended.
 - ReOpenly's model catalog and training limits can change. Check `GET /api/v1/base-models` and the training documentation for currently supported model IDs and settings. The helper does not guess a catalog model ID.
 - Inference may incur charges. Do not automatically retry an ambiguous network failure, which could duplicate a completed request.

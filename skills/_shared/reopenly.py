@@ -2,6 +2,7 @@
 """Small, dependency-free ReOpenly API client used by the repository skills."""
 
 import argparse
+import concurrent.futures
 import csv
 import json
 import os
@@ -102,28 +103,54 @@ def hf_upload(args):
     for col in (args.question_column, args.answer_column):
         if col not in dataset.column_names:
             fail(f"Dataset column {col!r} not found. Available columns: {', '.join(dataset.column_names)}")
+    endpoint = project_path(args, "chats")
     count = 0
-    for index, row in enumerate(dataset):
-        question, answer = row.get(args.question_column), row.get(args.answer_column)
-        if not isinstance(question, str) or not isinstance(answer, str) or not question.strip() or not answer.strip():
-            if args.invalid == "skip":
-                continue
-            fail(f"Example {index} has a missing or non-text question/answer (use --invalid skip to skip).")
-        payload = {
-            "name": f"{args.name_prefix}-{index+1}",
-            "messages": [
-                {"role": "user", "text": question.strip()},
-                {"role": "assistant", "text": answer.strip()},
-            ],
-        }
-        if args.tag:
-            payload["tags"] = args.tag
-        request(project_path(args, "chats"), "POST", payload)
-        count += 1
-        if args.limit and count >= args.limit:
-            break
-        if count % 25 == 0:
-            print(f"Uploaded {count} examples...", file=sys.stderr)
+    completed = 0
+    pending = set()
+
+    def upload(payload):
+        return request(endpoint, "POST", payload)
+
+    # Keep outstanding work bounded for both regular and streaming datasets.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+        try:
+            for index, row in enumerate(dataset):
+                question, answer = row.get(args.question_column), row.get(args.answer_column)
+                if not isinstance(question, str) or not isinstance(answer, str) or not question.strip() or not answer.strip():
+                    if args.invalid == "skip":
+                        continue
+                    fail(f"Example {index} has a missing or non-text question/answer (use --invalid skip to skip).")
+                payload = {
+                    "name": f"{args.name_prefix}-{index+1}",
+                    "messages": [
+                        {"role": "user", "text": question.strip()},
+                        {"role": "assistant", "text": answer.strip()},
+                    ],
+                }
+                if args.tag:
+                    payload["tags"] = args.tag
+                pending.add(pool.submit(upload, payload))
+                count += 1
+                if args.limit and count >= args.limit:
+                    break
+                if len(pending) >= 5:
+                    done, pending = concurrent.futures.wait(
+                        pending, return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    for future in done:
+                        future.result()
+                        completed += 1
+                        if completed % 25 == 0:
+                            print(f"Uploaded {completed} examples...", file=sys.stderr)
+            for future in concurrent.futures.as_completed(pending):
+                future.result()
+                completed += 1
+                if completed % 25 == 0:
+                    print(f"Uploaded {completed} examples...", file=sys.stderr)
+        except BaseException:
+            for future in pending:
+                future.cancel()
+            raise
     print(json.dumps({"uploaded": count, "dataset": args.dataset, "split": args.split,
                       "project": f"{args.owner}/{args.project}"}, indent=2))
 

@@ -7,7 +7,7 @@ compatibility: Requires Python 3.9+, the `datasets` Python package, and REOPENLY
 # Import a Hugging Face Q&A dataset
 
 1. Confirm the Hugging Face dataset ID, optional configuration, split, owner/project slugs, question and answer column names, and any desired tags. Do not guess dataset fields or split.
-2. Explain that the script downloads/streams dataset data and creates ReOpenly chat examples individually. Confirm the size or use a limit for a trial import. For gated datasets, the user must configure Hugging Face authentication separately.
+2. Explain that the script downloads/streams dataset data and creates ReOpenly chat examples individually, using a thread pool of exactly five parallel upload requests. Confirm the size or use a limit for a trial import. For gated datasets, the user must configure Hugging Face authentication separately.
 3. Run the script from this repository's root:
 
 ```sh
