@@ -9,6 +9,7 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 | `reopenly-qna-upload-csv` | Map a local CSV's question/answer columns into project chats. |
 | `reopenly-qna-import-huggingface` | Export a Hugging Face dataset split to CSV and upload its Q&A rows. |
 | `reopenly-embedding-upload-csv` | Import anchor/positive/negative pairs from CSV into an embedding dataset. |
+| `reopenly-embedding-generate-dataset` | Use the current LLM to generate embedding pairs from CSV document chunks. |
 | `reopenly-train-deploy` | Start and monitor fine-tuning; optionally create a hosted model alias. |
 | `reopenly-inference` | Call a project model using chat completions. |
 
@@ -25,6 +26,9 @@ skills/
 ├── reopenly-embedding-upload-csv/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
+├── reopenly-embedding-generate-dataset/
+│   ├── SKILL.md
+│   └── scripts/csv_tools.py
 ├── reopenly-train-deploy/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
@@ -55,7 +59,7 @@ python3 /path/to/reopenly-qna-upload-csv/scripts/reopenly.py --help
 
 ## Install
 
-Install all five skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
+Install all six skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```sh
 npx skills add reopenly/skills --skill '*' -a claude-code -a opencode
@@ -81,6 +85,7 @@ You can ask the agent naturally, for example:
 
 - “Upload `./support.csv` to project `acme/helpdesk`; the columns are `query` and `response`, and tag them `support-v1`.”
 - “Import `org/dataset` from Hugging Face, configuration `default`, split `train`, using columns `question` and `answer`. First limit it to 50 rows.”
+- “Generate embedding pairs from the `chunk` column of `./documents.csv`, confirm the row count and token cost with me before using the current LLM, then save `./pairs.csv`.”
 - “Train on tag `support-v1` with base model `<catalog-model-id>`, then deploy as `support-assistant`.”
 - “Ask model `support-assistant` in project `acme/helpdesk`: How do I return an order?”
 
@@ -98,8 +103,12 @@ python3 skills/reopenly-qna-import-huggingface/scripts/reopenly.py huggingface \
   --question-column question --answer-column answer --tag support-v1 --limit 50
 
 # Embedding pairs CSV upload (requires an embedding project and dataset ID)
-python3 skills/reopenly-embedding-upload-csv/scripts/reopenly.py csv \\
+python3 skills/reopenly-embedding-upload-csv/scripts/reopenly.py csv \
   --owner acme --project product-search --dataset-id DATASET_ID --file ./pairs.csv
+
+# Inspect document chunks before LLM-assisted dataset generation
+python3 skills/reopenly-embedding-generate-dataset/scripts/csv_tools.py inspect \
+  --file ./documents.csv --column chunk
 
 # Fine-tune and deploy (interactive confirmation is enabled by default)
 python3 skills/reopenly-train-deploy/scripts/reopenly.py train \
@@ -113,7 +122,7 @@ python3 skills/reopenly-inference/scripts/reopenly.py infer \
   --prompt 'How do I return an order?'
 ```
 
-See each skill's `SKILL.md` for its workflow and safety guidance. Q&A CSV and Hugging Face uploads create one chat per valid row. Embedding CSV imports use ReOpenly's asynchronous dataset-import workflow and require an embedding project plus a dataset ID. Check the project import status before retrying to avoid duplicates.
+See each skill's `SKILL.md` for its workflow and safety guidance. Q&A CSV and Hugging Face uploads create one chat per valid row. Embedding CSV imports use ReOpenly's asynchronous dataset-import workflow and require an embedding project plus a dataset ID. Embedding dataset generation uses the current LLM and requires explicit user confirmation after showing input size and generation count.
 
 ## API behavior and safety notes
 
