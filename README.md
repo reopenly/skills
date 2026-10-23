@@ -8,6 +8,7 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 | --- | --- |
 | `reopenly-qna-upload-csv` | Map a local CSV's question/answer columns into project chats. |
 | `reopenly-qna-import-huggingface` | Export a Hugging Face dataset split to CSV and upload its Q&A rows. |
+| `reopenly-embedding-upload-csv` | Import anchor/positive/negative pairs from CSV into an embedding dataset. |
 | `reopenly-train-deploy` | Start and monitor fine-tuning; optionally create a hosted model alias. |
 | `reopenly-inference` | Call a project model using chat completions. |
 
@@ -19,6 +20,9 @@ skills/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
 ├── reopenly-qna-import-huggingface/
+│   ├── SKILL.md
+│   └── scripts/reopenly.py
+├── reopenly-embedding-upload-csv/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
 ├── reopenly-train-deploy/
@@ -51,7 +55,7 @@ python3 /path/to/reopenly-qna-upload-csv/scripts/reopenly.py --help
 
 ## Install
 
-Install all four skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
+Install all five skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```sh
 npx skills add reopenly/skills --skill '*' -a claude-code -a opencode
@@ -93,6 +97,10 @@ python3 skills/reopenly-qna-import-huggingface/scripts/reopenly.py huggingface \
   --owner acme --project helpdesk --dataset org/dataset --split train \
   --question-column question --answer-column answer --tag support-v1 --limit 50
 
+# Embedding pairs CSV upload (requires an embedding project and dataset ID)
+python3 skills/reopenly-embedding-upload-csv/scripts/reopenly.py csv \\
+  --owner acme --project product-search --dataset-id DATASET_ID --file ./pairs.csv
+
 # Fine-tune and deploy (interactive confirmation is enabled by default)
 python3 skills/reopenly-train-deploy/scripts/reopenly.py train \
   --owner acme --project helpdesk --base-model CATALOG_MODEL_ID \
@@ -105,12 +113,12 @@ python3 skills/reopenly-inference/scripts/reopenly.py infer \
   --prompt 'How do I return an order?'
 ```
 
-See each skill's `SKILL.md` for its workflow and safety guidance. CSV and Hugging Face uploads create one chat per valid row. The default behavior fails on invalid rows; `--invalid skip` skips them. Uploads proceed row by row, so a failure can leave partial results; check the project before retrying to avoid duplicates.
+See each skill's `SKILL.md` for its workflow and safety guidance. Q&A CSV and Hugging Face uploads create one chat per valid row. Embedding CSV imports use ReOpenly's asynchronous dataset-import workflow and require an embedding project plus a dataset ID. Check the project import status before retrying to avoid duplicates.
 
 ## API behavior and safety notes
 
 - All project REST writes use `https://reopenly.com/api/v1/projects/{owner}/{project}/...` with a bearer token. Inference uses `https://reopenly.com/api/projects/{owner}/{project}/openai/v1/chat/completions`.
-- Q&A upload creates a chat containing one `user` and one `assistant` message. Hugging Face uploads use a thread pool of five parallel API requests; CSV uploads are sequential. Supply deliberate tags because training jobs select data by tags; when no tag is supplied, the helper omits tags.
+- Q&A upload creates a chat containing one `user` and one `assistant` message. Hugging Face uploads use a thread pool of five parallel API requests; CSV uploads are sequential. Embedding-pair uploads use asynchronous dataset imports and verify the target project type before creating an import.
 - A training job is asynchronous. The script polls until a model is available or the job fails. Training charges are based on measured training time. The helper asks for confirmation before creating the job, and before deploying an alias. `--yes` bypasses those prompts; only use it when intended.
 - ReOpenly's model catalog and training limits can change. Check `GET /api/v1/base-models` and the training documentation for currently supported model IDs and settings. The helper does not guess a catalog model ID.
 - Inference may incur charges. Do not automatically retry an ambiguous network failure, which could duplicate a completed request.
@@ -122,6 +130,7 @@ See each skill's `SKILL.md` for its workflow and safety guidance. CSV and Huggin
 - [Quickstart](https://reopenly.com/docs/quickstart/)
 - [Dataset chats](https://reopenly.com/docs/datasets/chats/)
 - [Asynchronous dataset imports](https://reopenly.com/docs/datasets/imports/)
+- [Embedding datasets](https://reopenly.com/docs/datasets/embedding-datasets/)
 - [Training jobs](https://reopenly.com/docs/training/jobs/)
 - [Hosted models](https://reopenly.com/docs/models/hosted-models/)
 - [OpenAI-compatible inference](https://reopenly.com/docs/api/openai-compatible/)
