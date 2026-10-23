@@ -2,12 +2,12 @@
 """Small, dependency-free ReOpenly API client used by the repository skills."""
 
 import argparse
-import concurrent.futures
 import csv
 import json
 import os
 import re
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -92,67 +92,31 @@ def csv_upload(args):
 
 
 def hf_upload(args):
+    if args.limit < 0:
+        fail("--limit must be zero or a positive integer.")
     try:
         from datasets import load_dataset
     except ImportError:
         fail("Hugging Face import requires the optional package: python -m pip install datasets")
     try:
-        dataset = load_dataset(args.dataset, args.config, split=args.split, streaming=args.streaming)
+        dataset = load_dataset(args.dataset, args.config, split=args.split)
     except Exception as exc:
         fail(f"Could not load Hugging Face dataset: {exc}")
     for col in (args.question_column, args.answer_column):
         if col not in dataset.column_names:
             fail(f"Dataset column {col!r} not found. Available columns: {', '.join(dataset.column_names)}")
-    endpoint = project_path(args, "chats")
-    count = 0
-    completed = 0
-    pending = set()
-
-    def upload(payload):
-        return request(endpoint, "POST", payload)
-
-    # Keep outstanding work bounded for both regular and streaming datasets.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
+    columns = [args.question_column, args.answer_column]
+    if args.limit:
+        dataset = dataset.select(range(min(args.limit, len(dataset))))
+    dataset = dataset.select_columns(columns)
+    with tempfile.TemporaryDirectory(prefix="reopenly-hf-") as temp_dir:
+        csv_path = Path(temp_dir) / "dataset.csv"
         try:
-            for index, row in enumerate(dataset):
-                question, answer = row.get(args.question_column), row.get(args.answer_column)
-                if not isinstance(question, str) or not isinstance(answer, str) or not question.strip() or not answer.strip():
-                    if args.invalid == "skip":
-                        continue
-                    fail(f"Example {index} has a missing or non-text question/answer (use --invalid skip to skip).")
-                payload = {
-                    "name": f"{args.name_prefix}-{index+1}",
-                    "messages": [
-                        {"role": "user", "text": question.strip()},
-                        {"role": "assistant", "text": answer.strip()},
-                    ],
-                }
-                if args.tag:
-                    payload["tags"] = args.tag
-                pending.add(pool.submit(upload, payload))
-                count += 1
-                if args.limit and count >= args.limit:
-                    break
-                if len(pending) >= 5:
-                    done, pending = concurrent.futures.wait(
-                        pending, return_when=concurrent.futures.FIRST_COMPLETED
-                    )
-                    for future in done:
-                        future.result()
-                        completed += 1
-                        if completed % 25 == 0:
-                            print(f"Uploaded {completed} examples...", file=sys.stderr)
-            for future in concurrent.futures.as_completed(pending):
-                future.result()
-                completed += 1
-                if completed % 25 == 0:
-                    print(f"Uploaded {completed} examples...", file=sys.stderr)
-        except BaseException:
-            for future in pending:
-                future.cancel()
-            raise
-    print(json.dumps({"uploaded": count, "dataset": args.dataset, "split": args.split,
-                      "project": f"{args.owner}/{args.project}"}, indent=2))
+            dataset.to_csv(str(csv_path), index=False)
+        except Exception as exc:
+            fail(f"Could not export Hugging Face dataset as CSV: {exc}")
+        args.file = str(csv_path)
+        csv_upload(args)
 
 
 def train(args):
@@ -226,7 +190,7 @@ def main():
     p.add_argument("--question-column", required=True); p.add_argument("--answer-column", required=True)
     p.add_argument("--tag", action="append", default=[]); p.add_argument("--name-prefix", default="hf")
     p.add_argument("--invalid", choices=("fail", "skip"), default="fail"); p.add_argument("--limit", type=int, default=0)
-    p.add_argument("--streaming", action="store_true"); p.set_defaults(func=hf_upload)
+    p.set_defaults(func=hf_upload)
     p = sub.add_parser("train", help="Train and optionally deploy a model")
     add_project(p); p.add_argument("--base-model", required=True); p.add_argument("--tag", action="append", default=[])
     p.add_argument("--epochs", type=float, default=3); p.add_argument("--max-seq-length", type=int, default=2048)

@@ -4,6 +4,8 @@
 import argparse
 import concurrent.futures
 import csv
+import datetime
+import email.utils
 import json
 import os
 import re
@@ -26,7 +28,23 @@ def project_path(args, suffix):
     return f"/api/v1/projects/{urllib.parse.quote(args.owner, safe='')}/{urllib.parse.quote(args.project, safe='')}/{suffix.lstrip('/')}"
 
 
-def request(path, method="GET", body=None, content_type="application/json", extra_headers=None, raw=False):
+def retry_after_seconds(value):
+    if not value:
+        return None
+    try:
+        return max(0, float(value))
+    except ValueError:
+        try:
+            retry_at = email.utils.parsedate_to_datetime(value)
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=datetime.timezone.utc)
+            return max(0, (retry_at - datetime.datetime.now(datetime.timezone.utc)).total_seconds())
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+
+def request(path, method="GET", body=None, content_type="application/json", extra_headers=None, raw=False,
+            timeout=120, retry_503=False):
     key = os.environ.get("REOPENLY_API_KEY")
     if not key:
         fail("Set REOPENLY_API_KEY in the environment before calling ReOpenly.")
@@ -39,21 +57,27 @@ def request(path, method="GET", body=None, content_type="application/json", extr
     if extra_headers:
         headers.update(extra_headers)
     req = urllib.request.Request(API_ORIGIN + path, data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=120) as response:
-            payload = response.read()
-            if raw:
-                return payload
-            return json.loads(payload) if payload else {}
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", "replace")
+    while True:
         try:
-            detail = json.dumps(json.loads(detail), ensure_ascii=False)
-        except json.JSONDecodeError:
-            pass
-        fail(f"ReOpenly returned HTTP {exc.code}: {detail}")
-    except urllib.error.URLError as exc:
-        fail(f"Could not reach ReOpenly: {exc.reason}")
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                payload = response.read()
+                if raw:
+                    return payload
+                return json.loads(payload) if payload else {}
+        except urllib.error.HTTPError as exc:
+            delay = retry_after_seconds(exc.headers.get("Retry-After")) if retry_503 and exc.code == 503 else None
+            if delay is not None:
+                exc.close()
+                time.sleep(delay)
+                continue
+            detail = exc.read().decode("utf-8", "replace")
+            try:
+                detail = json.dumps(json.loads(detail), ensure_ascii=False)
+            except json.JSONDecodeError:
+                pass
+            fail(f"ReOpenly returned HTTP {exc.code}: {detail}")
+        except urllib.error.URLError as exc:
+            fail(f"Could not reach ReOpenly: {exc.reason}")
 
 
 def csv_upload(args):
@@ -204,7 +228,8 @@ def infer(args):
     url = (f"/api/projects/{urllib.parse.quote(args.owner, safe='')}/"
            f"{urllib.parse.quote(args.project, safe='')}/openai/v1/chat/completions")
     result = request(url, "POST", {"model": args.model, "messages": [{"role": "user", "content": args.prompt}],
-                                    "max_tokens": args.max_tokens, "temperature": args.temperature})
+                                    "max_tokens": args.max_tokens, "temperature": args.temperature},
+                    timeout=360, retry_503=True)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

@@ -1,5 +1,5 @@
 ---
-name: reopenly-upload-csv
+name: reopenly-qna-upload-csv
 description: Upload a local CSV containing question-and-answer examples into a ReOpenly project. Use when asked to import, upload, or add Q&A training data from a CSV.
 compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Uses the ReOpenly customer API.
 ---
@@ -13,7 +13,7 @@ compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Uses the ReOpenly cust
 5. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
-python3 /path/to/reopenly-upload-csv/scripts/reopenly.py csv \
+python3 /path/to/reopenly-qna-upload-csv/scripts/reopenly.py csv \
   --owner OWNER --project PROJECT --file /path/to/data.csv \
   --question-column question --answer-column answer --tag support
 ```
