@@ -6,8 +6,8 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 
 | Skill | Purpose |
 | --- | --- |
-| `reopenly-upload-csv` | Map a local CSV's question/answer columns into project chats. |
-| `reopenly-import-huggingface` | Load a Hugging Face dataset split and upload its Q&A rows. |
+| `reopenly-qna-upload-csv` | Map a local CSV's question/answer columns into project chats. |
+| `reopenly-qna-import-huggingface` | Export a Hugging Face dataset split to CSV and upload its Q&A rows. |
 | `reopenly-train-deploy` | Start and monitor fine-tuning; optionally create a hosted model alias. |
 | `reopenly-inference` | Call a project model using chat completions. |
 
@@ -15,10 +15,10 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 
 ```text
 skills/
-├── reopenly-upload-csv/
+├── reopenly-qna-upload-csv/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
-├── reopenly-import-huggingface/
+├── reopenly-qna-import-huggingface/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
 ├── reopenly-train-deploy/
@@ -46,7 +46,7 @@ Each skill includes its own helper script so it remains self-contained when inst
 The API helpers use only Python's standard library. The Hugging Face skill additionally requires the optional `datasets` package. After installing a skill, invoke its helper with Python from that skill's installed directory; for example:
 
 ```sh
-python3 /path/to/reopenly-upload-csv/scripts/reopenly.py --help
+python3 /path/to/reopenly-qna-upload-csv/scripts/reopenly.py --help
 ```
 
 ## Install
@@ -63,7 +63,7 @@ The CLI prompts for confirmation and installs the skills for Claude Code and Ope
 npx skills add reopenly/skills --skill '*' -a claude-code -a opencode -g
 ```
 
-You can install one skill at a time by replacing `'*'` with a skill ID, for example `--skill reopenly-upload-csv`. List available skills before installing with:
+You can install one skill at a time by replacing `'*'` with a skill ID, for example `--skill reopenly-qna-upload-csv`. List available skills before installing with:
 
 ```sh
 npx skills add reopenly/skills --list
@@ -84,12 +84,12 @@ Or run the helper directly:
 
 ```sh
 # CSV upload
-python3 skills/reopenly-upload-csv/scripts/reopenly.py csv \
+python3 skills/reopenly-qna-upload-csv/scripts/reopenly.py csv \
   --owner acme --project helpdesk --file ./support.csv \
   --question-column query --answer-column response --tag support-v1
 
 # Hugging Face dataset upload
-python3 skills/reopenly-import-huggingface/scripts/reopenly.py huggingface \
+python3 skills/reopenly-qna-import-huggingface/scripts/reopenly.py huggingface \
   --owner acme --project helpdesk --dataset org/dataset --split train \
   --question-column question --answer-column answer --tag support-v1 --limit 50
 
