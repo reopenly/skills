@@ -227,10 +227,55 @@ def train(args):
 def infer(args):
     url = (f"/api/projects/{urllib.parse.quote(args.owner, safe='')}/"
            f"{urllib.parse.quote(args.project, safe='')}/openai/v1/chat/completions")
-    result = request(url, "POST", {"model": args.model, "messages": [{"role": "user", "content": args.prompt}],
-                                    "max_tokens": args.max_tokens, "temperature": args.temperature},
+    payload = {"model": args.model, "messages": [{"role": "user", "content": args.prompt}],
+               "max_tokens": args.max_tokens, "temperature": args.temperature}
+    if args.top_p is not None:
+        payload["top_p"] = args.top_p
+    if args.reasoning_effort:
+        payload["reasoning_effort"] = args.reasoning_effort
+    result = request(url, "POST", payload,
                     timeout=360, retry_503=True)
     print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+def completion(args):
+    url = (f"/api/projects/{urllib.parse.quote(args.owner, safe='')}/"
+           f"{urllib.parse.quote(args.project, safe='')}/openai/v1/completions")
+    payload = {"model": args.model, "prompt": args.prompt,
+               "max_tokens": args.max_tokens, "temperature": args.temperature}
+    if args.top_p is not None:
+        payload["top_p"] = args.top_p
+    if args.reasoning_effort:
+        payload["reasoning_effort"] = args.reasoning_effort
+    result = request(url, "POST", payload, timeout=360, retry_503=True)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+def embedding(args):
+    if len(args.input) > 64:
+        fail("The embeddings API accepts at most 64 input strings per request; split the inputs into smaller requests.")
+    if any(value == "" for value in args.input):
+        fail("Embedding inputs must be non-empty strings.")
+    if args.truncate and len(args.input) > 1:
+        fail("Send a truncating embedding input on its own; a truncated input fills its entire input budget.")
+    url = (f"/api/projects/{urllib.parse.quote(args.owner, safe='')}/"
+           f"{urllib.parse.quote(args.project, safe='')}/openai/v1/embeddings")
+    payload = {"model": args.model, "input": args.input, "encoding_format": args.encoding_format}
+    if args.dimensions is not None:
+        payload["dimensions"] = args.dimensions
+    if args.input_type:
+        payload["input_type"] = args.input_type
+    if args.truncate:
+        payload["truncate"] = True
+    result = request(url, "POST", payload, timeout=360, retry_503=True)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+
+def add_generation_options(p):
+    p.add_argument("--max-tokens", type=int, default=256)
+    p.add_argument("--temperature", type=float, default=0.2)
+    p.add_argument("--top-p", type=float)
+    p.add_argument("--reasoning-effort", choices=("none", "low", "high"))
 
 
 def add_project(p):
@@ -261,8 +306,19 @@ def main():
     p.add_argument("--yes", action="store_true", help="Skip confirmation prompts"); p.set_defaults(func=train)
     p = sub.add_parser("infer", help="Run a chat completion")
     add_project(p); p.add_argument("--model", required=True); p.add_argument("--prompt", required=True)
-    p.add_argument("--max-tokens", type=int, default=256); p.add_argument("--temperature", type=float, default=0.2)
+    add_generation_options(p)
     p.set_defaults(func=infer)
+    p = sub.add_parser("completion", help="Run a legacy text completion")
+    add_project(p); p.add_argument("--model", required=True); p.add_argument("--prompt", required=True)
+    add_generation_options(p); p.set_defaults(func=completion)
+    p = sub.add_parser("embedding", help="Embed one or more strings")
+    add_project(p); p.add_argument("--model", required=True)
+    p.add_argument("--input", action="append", required=True, help="Input text; repeat for a batch of up to 64")
+    p.add_argument("--input-type", choices=("query", "document"))
+    p.add_argument("--encoding-format", choices=("float", "base64"), default="float")
+    p.add_argument("--dimensions", type=int)
+    p.add_argument("--truncate", action="store_true", help="Truncate over-limit inputs (each truncated input must be sent alone)")
+    p.set_defaults(func=embedding)
     args = parser.parse_args()
     args.func(args)
 
