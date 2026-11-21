@@ -12,10 +12,10 @@ From the project where you want to test the skills:
 
 ```sh
 git clone https://github.com/reopenly/skills.git reopenly-skills
-mkdir -p .opencode/skills
+mkdir -p ~/.opencode/skills
 REOPENLY_SKILLS="$(cd reopenly-skills/skills && pwd)"
 for skill in "$REOPENLY_SKILLS"/reopenly-*; do
-  ln -s "$skill" .opencode/skills/"$(basename "$skill")"
+  ln -s "$skill" ~/.opencode/skills/"$(basename "$skill")"
 done
 ```
 

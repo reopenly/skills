@@ -1,5 +1,5 @@
 ---
-name: reopenly-train-deploy
+name: reopenly-text-train-deploy
 description: Start a ReOpenly fine-tuning job, monitor it, and optionally publish its result as a hosted model alias. Use when asked to train or deploy a model in a ReOpenly project.
 compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Training and inference can incur charges.
 ---
@@ -11,7 +11,7 @@ compatibility: Requires Python 3.9+ and REOPENLY_API_KEY. Training and inference
 3. Run the helper bundled inside this skill (substitute its installed path):
 
 ```sh
-python3 /path/to/reopenly-train-deploy/scripts/reopenly.py train \
+python3 /path/to/reopenly-text-train-deploy/scripts/reopenly.py train \
   --owner OWNER --project PROJECT --base-model CATALOG_MODEL_ID \
   --tag support --epochs 3 --max-seq-length 2048 \
   --model-name 'Support assistant' --model-slug support-assistant --deploy
