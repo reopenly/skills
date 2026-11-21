@@ -1,11 +1,12 @@
 # ReOpenly skills
 
-Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fine-tuning and deploying a model, and running inference. The skills use the ReOpenly customer API and read credentials from `REOPENLY_API_KEY`.
+Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fine-tuning and deploying a model, running inference, and connecting to ReOpenly's native [MCP server](https://reopenly.com/mcp). The API skills use the ReOpenly customer API with `REOPENLY_API_KEY`; `reopenly-mcp` uses Streamable HTTP and OAuth 2.1 with no local API key required.
 
 ## Skills
 
 | Skill | Purpose |
 | --- | --- |
+| `reopenly-mcp` | Connect to and inspect ReOpenly via the native MCP server (`https://reopenly.com/api/mcp`) over Streamable HTTP with OAuth 2.1. |
 | `reopenly-qna-upload-csv` | Map a local CSV's question/answer columns into project chats. |
 | `reopenly-qna-import-huggingface` | Export a Hugging Face dataset split to CSV and upload its Q&A rows. |
 | `reopenly-embedding-upload-csv` | Import anchor/positive/negative pairs from CSV into an embedding dataset. |
@@ -18,6 +19,9 @@ Reusable skills for loading Q&A data into [ReOpenly](https://reopenly.com/), fin
 
 ```text
 skills/
+├── reopenly-mcp/
+│   ├── SKILL.md
+│   └── scripts/mcp_check.py
 ├── reopenly-qna-upload-csv/
 │   ├── SKILL.md
 │   └── scripts/reopenly.py
@@ -63,7 +67,7 @@ python3 /path/to/reopenly-qna-upload-csv/scripts/reopenly.py --help
 
 ## Install
 
-Install all seven skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
+Install all eight skills for the current project with the [`skills` CLI](https://github.com/vercel-labs/skills):
 
 ```sh
 npx skills add reopenly/skills --skill '*' -a claude-code -a opencode
@@ -87,6 +91,7 @@ The CLI supports many coding agents. Use `npx skills add --help` for the support
 
 You can ask the agent naturally, for example:
 
+- “Connect to ReOpenly over MCP and show my projects, hosted models, and current USD balance.”
 - “Upload `./support.csv` to project `acme/helpdesk`; the columns are `query` and `response`, and tag them `support-v1`.”
 - “Import `org/dataset` from Hugging Face, configuration `default`, split `train`, using columns `question` and `answer`. First limit it to 50 rows.”
 - “Generate embedding pairs from the `chunk` column of `./documents.csv`, confirm the row count and token cost with me before using the current LLM, then save `./pairs.csv`.”
@@ -97,6 +102,10 @@ You can ask the agent naturally, for example:
 Or run the helper directly:
 
 ```sh
+# MCP client config snippet and public OAuth discovery check
+python3 skills/reopenly-mcp/scripts/mcp_check.py config --client claude-code
+python3 skills/reopenly-mcp/scripts/mcp_check.py discover
+
 # CSV upload
 python3 skills/reopenly-qna-upload-csv/scripts/reopenly.py csv \
   --owner acme --project helpdesk --file ./support.csv \
@@ -142,6 +151,7 @@ See each skill's `SKILL.md` for its workflow and safety guidance. Q&A CSV and Hu
 
 ## API behavior and safety notes
 
+- ReOpenly's native MCP server (`https://reopenly.com/api/mcp`) uses Streamable HTTP with OAuth 2.1 sign-in. The default `mcp:read` launch profile exposes 31 observational read tools with zero destructive actions and zero in-chat purchases; mutations, paid compute, and prepaid balance top-ups stay on the ReOpenly web dashboard (or the local API-key skills here) or require explicit first-party web review.
 - All project REST writes use `https://reopenly.com/api/v1/projects/{owner}/{project}/...` with a bearer token. Project inference uses `https://reopenly.com/api/projects/{owner}/{project}/openai/v1/{chat/completions,completions,embeddings}`.
 - Q&A upload creates a chat containing one `user` and one `assistant` message. Hugging Face uploads use a thread pool of five parallel API requests; CSV uploads are sequential. Embedding-pair uploads use asynchronous dataset imports and verify the target project type before creating an import.
 - A training job is asynchronous. The script polls until a model is available or the job fails. Training charges are based on measured training time. The helper asks for confirmation before creating the job, and before deploying an alias. `--yes` bypasses those prompts; only use it when intended.
@@ -151,6 +161,7 @@ See each skill's `SKILL.md` for its workflow and safety guidance. Q&A CSV and Hu
 
 ## Documentation
 
+- [ChatGPT / MCP Integration](https://reopenly.com/mcp)
 - [Authentication](https://reopenly.com/docs/getting-started/authentication/)
 - [Quickstart](https://reopenly.com/docs/quickstart/)
 - [Dataset chats](https://reopenly.com/docs/datasets/chats/)
