@@ -44,7 +44,7 @@ The symlink destinations must not already exist. Remove only the specific test l
 - Run the Python syntax check on every helper you edit:
 
   ```sh
-  find skills -path '*/scripts/reopenly.py' -print0 | xargs -0 -n1 python3 -m py_compile
+  find skills -path '*/scripts/*.py' -print0 | xargs -0 -n1 python3 -m py_compile
   ```
 
 - Update `README.md` when installation or user-facing behavior changes.
